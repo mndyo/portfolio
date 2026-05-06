@@ -240,6 +240,117 @@ nav::before{
   z-index:2;
 }
 #tab-about{margin-left:-6px;}
+
+
+
+@media (max-width: 768px) {
+  body { overflow: hidden; }
+
+  main {
+    min-height: 0 !important;
+    height: calc(100svh - 5rem) !important;
+    padding: 0 !important;
+    margin-top: 2.5rem !important;
+    display: flex !important;
+    flex-direction: column !important;
+    justify-content: center !important;
+    overflow: hidden !important;
+    gap: 16px !important;
+    align-items: center !important;
+  }
+
+  .cat-section { width: 100%; flex-shrink: 1; min-height: 0; }
+  .cat-inner { width: 100%; position: relative; min-height: 0; }
+
+  .cat-label {
+    display: block !important;
+    border: none !important;
+    border-radius: 0 !important;
+    padding: 0 0 4px 1rem !important;
+    margin-bottom: 3px !important;
+    font-size: .5rem !important;
+    color: var(--mid) !important;
+    text-align: left !important;
+  }
+
+  .thumb-row {
+    display: flex !important;
+    flex-direction: row !important;
+    justify-content: flex-start !important;
+    flex-wrap: nowrap !important;
+    overflow-x: auto !important;
+    overflow-y: hidden !important;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    padding: 0 1rem !important;
+    gap: 0 !important;
+    width: 100%;
+    box-sizing: border-box;
+  }
+  .thumb-row::-webkit-scrollbar { display: none; }
+
+  .thumb-item {
+    flex-shrink: 0 !important;
+    display: block !important;
+  }
+
+  .thumb-def {
+    position: relative !important;
+    padding-top: 0 !important;
+    height: 100% !important;
+  }
+
+  .thumb-def img {
+    position: absolute !important;
+    inset: 0 !important;
+    width: 100% !important;
+    height: 100% !important;
+    object-fit: cover !important;
+  }
+
+  .thumb-exp { display: none !important; }
+  .thumb-def { visibility: visible !important; }
+
+  /* fade + arrow indicator on right edge */
+  .scroll-arrow {
+    position: absolute;
+    right: .4rem;
+    top: 50%;
+    transform: translateY(-50%);
+    display: flex !important;
+    align-items: center;
+    justify-content: center;
+    background: none;
+    pointer-events: none;
+    font-size: .7rem;
+    color: #fff;
+    opacity: 1 !important;
+    z-index: 50;
+    transition: opacity .25s;
+    line-height: 1;
+  }
+
+  .top-right {
+    top: 1.4rem !important;
+    right: 1.4rem !important;
+    font-size: .6rem !important;
+    z-index: 200 !important;
+  }
+
+  nav {
+    bottom: .9rem !important;
+    left: 1rem !important;
+    align-items: flex-end !important;
+  }
+  nav a { font-size: .6rem; padding: .2rem .7rem !important; }
+  nav a.active { padding-bottom: calc(.2rem + 1px) !important; }
+  nav::before { bottom: 0 !important; }
+
+  .about-window { width: 92vw !important; }
+  .about-body { grid-template-columns: 1fr !important; gap: 1rem !important; }
+  .about-body .photo-wrap { display: flex; width: 60% !important; margin: 0 auto; }
+  .modal { max-width: 96vw !important; }
+}
 </style>
 <link rel="prefetch" href="about.html">
 </head>
@@ -331,14 +442,13 @@ const main = document.getElementById('main');
 
 function buildRows() {
   main.innerHTML = '';
-  const availW = window.innerWidth - 2 * parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--margin')) * parseFloat(getComputedStyle(document.documentElement).fontSize);
-  // --margin is 5rem, compute in px
-  const marginPx = 5 * 16;
+  const isMobile = window.innerWidth <= 768;
+  const marginPx = isMobile ? 16 : 5 * 16;
   const totalW = window.innerWidth - marginPx * 2;
 
   categories.forEach(cat => {
     const n = cat.projects.length;
-    const baseW = Math.min(totalW / n, 105);
+    const baseW = isMobile ? Math.floor(window.innerWidth / 4.2) : Math.min(totalW / n, 105);
     const expandW = baseW * EXPAND_RATIO;
     const shrinkW = (totalW - expandW) / (n - 1);
 
@@ -348,7 +458,8 @@ function buildRows() {
 
     const inner = document.createElement('div');
     inner.className = 'cat-inner';
-    inner.style.width = (baseW * cat.projects.length) + 'px';
+    inner.style.width = isMobile ? '100%' : (baseW * cat.projects.length) + 'px';
+    if (isMobile) inner.style.position = 'relative';
 
     const lbl = document.createElement('div');
     lbl.className = 'cat-label';
@@ -359,6 +470,7 @@ function buildRows() {
     const row = document.createElement('div');
     row.className = 'thumb-row';
     row.style.height = baseW + 'px';
+    if (isMobile) { row.style.overflowX = 'scroll'; row.style.overflowY = 'visible'; }
 
     const items = [];
 
@@ -369,6 +481,7 @@ function buildRows() {
       item.style.height = baseW + 'px';
 
       if (p.empty) {
+        item.dataset.empty = '1';
         item.innerHTML = `
           <div class="thumb-def">${p.thumb ? `<img src="${p.thumb}" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;">` : `<div style="position:absolute;inset:0;background:#E2DED6;"></div>`}</div>
           <div class="thumb-exp" style="width:${expandW}px;">
@@ -426,7 +539,18 @@ function buildRows() {
       });
 
       item.addEventListener('click', () => {
-      if (p.empty) return;
+      if (p.empty) {
+        // Toggle coming soon overlay on tap
+        const existing = item.querySelector('.mobile-cs');
+        if (existing) { existing.remove(); return; }
+        const cs = document.createElement('div');
+        cs.className = 'mobile-cs';
+        cs.style.cssText = 'position:absolute;inset:0;background:rgba(0,0,0,.3);display:flex;align-items:center;justify-content:center;font-size:.5rem;letter-spacing:.12em;color:#fff;z-index:10;';
+        cs.textContent = 'coming soon';
+        item.appendChild(cs);
+        setTimeout(() => cs.remove(), 1500);
+        return;
+      }
       if (p.external) { window.open(p.embed, '_blank'); return; }
       openModal(p, cat.label);
     });
@@ -435,6 +559,25 @@ function buildRows() {
     });
 
     inner.appendChild(row);
+    // Add scroll arrow on mobile — in inner but offset to sit on thumbs not label
+    if (window.innerWidth <= 768 && cat.projects.length > 3) {
+      const arrow = document.createElement('div');
+      arrow.className = 'scroll-arrow';
+      arrow.textContent = '>';
+      arrow.style.opacity = '1';
+      // center arrow on thumb row using known baseW
+      arrow.style.top = 'auto';
+      arrow.style.bottom = 'auto';
+      arrow.style.top = (lbl.getBoundingClientRect().height || 16) + (baseW / 2) + 'px';
+      arrow.style.transform = 'translateY(-50%)';
+      inner.appendChild(arrow);
+      (function(r, a) {
+        r.addEventListener('scroll', () => {
+          const atEnd = r.scrollLeft + r.clientWidth >= r.scrollWidth - 4;
+          a.style.opacity = atEnd ? '0' : '1';
+        });
+      })(row, arrow);
+    }
     section.appendChild(inner);
     main.appendChild(section);
   });
@@ -444,6 +587,7 @@ buildRows();
 window.addEventListener('resize', buildRows);
 
 function fitToPage() {
+  const isMobile = window.innerWidth <= 768;
   const sections = document.querySelectorAll('.cat-section');
   if (!sections.length) return;
   const navH = 48;
@@ -451,7 +595,7 @@ function fitToPage() {
   let totalContent = 0;
   sections.forEach(s => { totalContent += s.offsetHeight; });
   const totalGap = available - totalContent;
-  const gap = Math.max(8, (totalGap / (sections.length - 1)) * 0.45);
+  const gap = isMobile ? 12 : Math.max(8, (totalGap / (sections.length - 1)) * 0.45);
   sections.forEach((s, i) => {
     s.style.marginBottom = i < sections.length - 1 ? gap + 'px' : '0';
   });
@@ -591,13 +735,19 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal()
   })();
 
   function alignNav() {
+    const nameEl = document.querySelector('.top-right');
+    if (window.innerWidth <= 768) {
+      nameEl.style.left = 'auto';
+      nameEl.style.right = '1.4rem';
+      document.querySelector('nav').style.left = '1rem';
+      return;
+    }
     const inner = document.querySelector('.cat-inner');
     if (!inner) return;
     const rect = inner.getBoundingClientRect();
-    // left edge of grid
     document.querySelector('nav').style.left = rect.left + 'px';
-    // right edge of grid
-    document.querySelector('.top-right').style.left = (rect.right - document.querySelector('.top-right').offsetWidth) + 'px';
+    nameEl.style.right = 'auto';
+    nameEl.style.left = (rect.right - nameEl.offsetWidth) + 'px';
   }
   alignNav();
   window.addEventListener('resize', alignNav);
